@@ -1,6 +1,26 @@
-# Filter out local zones, which are not supported by EKS managed node groups
+# main.tf
+
+# -------------------------------------------------------------------------
+# Data Sources
+# -------------------------------------------------------------------------
 data "aws_availability_zones" "available" {
   state = "available"
+}
+
+# -------------------------------------------------------------------------
+# DYNAMIC VERSION CHECK
+# -------------------------------------------------------------------------
+# This script asks AWS: "What are all the valid cluster versions you support?"
+# It then sorts them and picks the highest one.
+# This ensures that if you run this in 2028, it will pick v1.35 (or whatever is new).
+data "external" "latest_k8s_version" {
+  program = ["bash", "-c", <<EOT
+    ver=$(aws eks describe-addon-versions --addon-name vpc-cni \
+      --query 'addons[].addonVersions[].compatibilities[].clusterVersion' \
+      --output text | tr '\t' '\n' | sort -V | tail -n 1)
+    echo "{\"version\": \"$ver\"}"
+  EOT
+  ]
 }
 
 locals {
@@ -46,6 +66,12 @@ module "eks" {
 
   cluster_name    = var.cluster_name
   cluster_version = "1.31"
+
+  # -----------------------------------------------------------------------
+  # AUTOMATIC VERSIONING
+  # -----------------------------------------------------------------------
+  # Uses the result from the external script at the top of the file
+  cluster_version = data.external.latest_k8s_version.result.version
 
   # Networking
   vpc_id     = module.vpc.vpc_id
