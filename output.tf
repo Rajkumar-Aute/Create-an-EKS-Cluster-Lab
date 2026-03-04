@@ -10,10 +10,10 @@ output "cluster_name" {
 
 output "region" {
   description = "AWS region"
-  value       = var.region
+  value       = var.aws_region
 }
 
 output "configure_kubectl" {
   description = "Configure kubectl: run this command in your terminal"
-  value       = "aws eks --region ${var.region} update-kubeconfig --name '${module.eks.cluster_name}'"
+  value       = "aws eks --region ${var.aws_region} update-kubeconfig --name '${module.eks.cluster_name}'"
 }
